@@ -1,0 +1,81 @@
+---
+title: "Erin_MHW_Reds"
+author: "Jannine Chamorro"
+date: "11/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Load packaeges and data
+```{r}
+library(tidyverse)
+library(lubridate)
+
+data<-read_csv(file="Erin_MHW_Reds.csv")
+```
+
+# 2. Quick visualization
+```{r}
+# Converting datetime to posixct format
+data$datetime_pst<-as.POSIXct(data$datetime_pst, format="%m/%d/%Y %H:%M:%S", tz="America/Los_Angeles")
+
+
+# Chcking to make sure it's the right format
+class(data$datetime_pst)
+
+# Quick Plot
+plot(data$datetime_pst, data$temp_C)
+
+# Nicer ggplot
+
+ggplot(data, aes(x=datetime_pst, y=temp_C))+
+  geom_point(size=0.25, color="deepskyblue4")+
+  geom_line(color="deepskyblue4")+
+  theme_bw()
+```
+
+# 3. Summarizing Data - Making new variables to help analyze
+```{r}
+# Making a date column
+data$date<-substr(data$datetime_pst, 1, 10)
+data$date<-as.Date(data$date)
+
+# Making a time column
+data$time<-substr(data$datetime_pst, 12,16)
+
+# Making an hour column
+data$hour<-substr(data$datetime_pst, 12,13)
+data$hour<-as.factor(data$hour)
+
+# Getting the mean based on day and hour
+hourly_average<-data %>% 
+  group_by(date, hour) %>% 
+  summarise(avg_temp=mean(temp_C))
+
+# Making a new 'time' column with just the hour
+
+# First make a 'min' colum
+hourly_average$min<-rep("00", time=627)
+
+# Then combine the 'hour' and 'min' column
+hourly_average$time<-paste(hourly_average$hour, hourly_average$min, sep=":")
+
+# Making a 'datetime' column
+hourly_average$datetime<-paste(hourly_average$date, hourly_average$time, sep=" ")
+
+# Converting it to posixct
+hourly_average$datetime<-as.POSIXct(hourly_average$datetime, format="%Y-%m-%d %H:%M", tz="America/Los_Angeles")
+
+# Quick Plot
+plot(hourly_average$datetime, hourly_average$avg_temp)
+
+# GGPlot
+ggplot(hourly_average, aes(x=datetime, y=avg_temp))+
+  geom_point(size=0.25, color="deepskyblue4")+
+  geom_line(color="deepskyblue4")+
+  theme_bw()
+```
+
