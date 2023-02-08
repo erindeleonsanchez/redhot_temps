@@ -1,0 +1,109 @@
+---
+title: "Red Hot Logger Visualization"
+author: "Erin de Leon Sanchez"
+date: "2/8/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Load packages and data
+```{r}
+library(tidyverse)
+library(lubridate)
+
+mhw_logger<-read_csv("mhw_logger_temps.csv")
+control_logger<-read_csv("control_logger_temps.csv")
+```
+
+# 2. Quick plot
+```{r}
+# Converting datetime to posixct format
+mhw_logger$datetime_pst<-as.POSIXct(mhw_logger$datetime_pst, format="%m/%d/%Y %H:%M:%S", tz="America/Los_Angeles")
+control_logger$datetime_pst<-as.POSIXct(control_logger$datetime_pst, format="%m/%d/%Y %H:%M:%S", tz="America/Los_Angeles")
+
+# Chcking to make sure it's the right format
+class(mhw_logger$datetime_pst)
+class(control_logger$datetime_pst)
+
+# Quick Plot
+plot(mhw_logger$datetime_pst, mhw_logger$temp_c)
+plot(control_logger$datetime_pst, control_logger$temp_c)
+
+# ggplot!
+
+ggplot(mhw_logger, aes(x=datetime_pst, y=temp_c))+
+  geom_point(size=0.25, color="red")+
+  geom_line(color="red")+
+  theme_bw()
+
+ggplot(control_logger, aes(x=datetime_pst, y=temp_c))+
+  geom_point(size=0.25, color="deepskyblue4")+
+  geom_line(color="deepskyblue4")+
+  theme_bw()
+```
+
+
+# 3. Summarizing Data - Making new variables to help analyze
+```{r}
+# Making a date column for each logger
+mhw_logger$date<-substr(mhw_logger$datetime_pst, 1, 10)
+mhw_logger$date<-as.Date(mhw_logger$date)
+
+control_logger$date<-substr(control_logger$datetime_pst, 1, 10)
+control_logger$date<-as.Date(control_logger$date)
+
+# Making a time column for each logger
+mhw_logger$time<-substr(mhw_logger$datetime_pst, 12,16)
+control_logger$time<-substr(control_logger$datetime_pst, 12,16)
+
+# Making an hour column for each logger
+mhw_logger$hour<-substr(mhw_logger$datetime_pst, 12,13)
+mhw_logger$hour<-as.factor(mhw_logger$hour)
+
+control_logger$hour<-substr(control_logger$datetime_pst, 12,13)
+control_logger$hour<-as.factor(control_logger$hour)
+
+# Getting the mean based on day and hour
+hourly_average_mhw<-mhw_logger %>% 
+  group_by(date, hour) %>% 
+  summarise(avg_temp=mean(temp_c))
+
+hourly_average_control<-control_logger %>% 
+  group_by(date, hour) %>% 
+  summarise(avg_temp=mean(temp_c))
+
+# Making a new 'time' column with just the hour
+
+# First make a 'min' column
+hourly_average_mhw$min<-rep("00", time=2117)
+
+hourly_average_control$min<-rep("00", time=2117)
+# 2117 is the number of rows in the dataset
+
+# Then combine the 'hour' and 'min' column
+hourly_average_mhw$time<-paste(hourly_average_mhw$hour, hourly_average_mhw$min, sep=":")
+hourly_average_control$time<-paste(hourly_average_control$hour, hourly_average_control$min, sep=":")
+
+# Making a 'datetime' column
+hourly_average_mhw$datetime<-paste(hourly_average_mhw$date, hourly_average_mhw$time, sep=" ")
+hourly_average_control$datetime<-paste(hourly_average_control$date, hourly_average_control$time, sep=" ")
+
+# Converting it to posixct
+hourly_average_mhw$datetime<-as.POSIXct(hourly_average_mhw$datetime, format="%Y-%m-%d %H:%M", tz="America/Los_Angeles")
+
+hourly_average_control$datetime<-as.POSIXct(hourly_average_control$datetime, format="%Y-%m-%d %H:%M", tz="America/Los_Angeles")
+
+# Quick Plot
+plot(hourly_average_mhw$datetime, hourly_average_mhw$avg_temp)
+plot(hourly_average_control$datetime, hourly_average_control$avg_temp)
+
+# GGPlot
+ggplot(hourly_average_mhw, aes(x=datetime, y=avg_temp))+
+  geom_point(size=0.25, color="red")+
+  geom_line(color="red")+
+  theme_bw()
+```
+
